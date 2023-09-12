@@ -320,6 +320,7 @@ return [
             'text' => 'users',
             'url'  => 'users',
             'icon' => 'fas fa-fw fa-users',
+            'active' => ['users*']
         ],
         // [
         //     'text'        => 'pages',
