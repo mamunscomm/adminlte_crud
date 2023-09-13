@@ -76,13 +76,28 @@ class SetupAdminLte extends Command
         $this->insertUsersToDB();
         // Run seeder class
 
-        // Create user controller
-        $this->info('Running artisan command make:controller UserController');
-        $this->runArtisanCommand('make:controller', ['UserController']);
-        $this->info('Controller created successfully');
-
         // Rewrite home blade file
         $this->rewriteHomeBlade();
+
+        // Clone app files from GIT
+        $this->gitClone('app', '');
+
+        // Clone routes files from GIT
+        $this->gitClone('routes', '');
+
+        // Clone views files from GIT
+        $this->gitClone('resources/views', 'resources/');
+
+        // Clone views files from GIT
+        $this->gitClone('config', '');
+
+        $this->runArtisanCommand('config:cache');
+
+        // Clone Form validation request for user
+        // $this->gitClone('app/Http/Requests/UserStoreRequest.php', 'Http/Requests');
+
+        // Clone route
+        // $this->gitClone('routes/web.php', 'routes');
     }
 
 
@@ -223,5 +238,71 @@ class SetupAdminLte extends Command
         File::put($path, $fileText);
 
         $this->info("File {$path} updated.");
+    }
+
+
+    private function gitClone($filePath, $destinationPath)
+    {
+        $destinationDirectory = app_path($destinationPath);
+
+        // Create the destination directory if it doesn't exist
+        if (!File::isDirectory($destinationDirectory)) {
+            File::makeDirectory($destinationDirectory, 0755, true, true);
+        }
+
+        // Define the repository and file you want to clone
+        $repository = 'https://github.com/mamunscomm/adminlte_crud.git';
+        $file = $filePath;
+
+        // Clone the Git repository to a temporary directory
+        $tempDirectory = tempnam(sys_get_temp_dir(), 'gitrepo_');
+        unlink($tempDirectory);
+        mkdir($tempDirectory);
+
+        exec("git clone {$repository} {$tempDirectory}", $output, $returnCode);
+
+        if ($returnCode === 0) {
+            $sourceDirectory = $tempDirectory . '/' . $destinationPath;
+            $destinationDirectory = base_path($destinationPath);
+
+            // Ensure all parent directories exist
+            File::makeDirectory($destinationDirectory, 0755, true, true);
+
+            // Copy the specific directory and its contents to the destination
+            $this->copyDirectory($sourceDirectory, $destinationDirectory);
+
+            $this->info("Directory '{$destinationPath}' cloned successfully to '{$destinationDirectory}'");
+
+            // Clean up the temporary directory
+            exec("rmdir /s /q {$tempDirectory}");
+        } else {
+            $this->error("Failed to clone the repository.");
+        }
+    }
+
+
+
+    protected function copyDirectory($source, $destination)
+    {
+        if (!is_dir($destination)) {
+            mkdir($destination, 0755, true);
+        }
+
+        $dir = opendir($source);
+
+        while (($file = readdir($dir)) !== false) {
+            if ($file != '.' && $file != '..') {
+                $sourceFile = $source . '/' . $file;
+                $destinationFile = $destination . '/' . $file;
+
+                if (is_dir($sourceFile)) {
+                    $this->copyDirectory($sourceFile, $destinationFile);
+                } else {
+                    copy($sourceFile, $destinationFile);
+                }
+            }
+        }
+
+        closedir($dir);
     }
 }
